@@ -13,9 +13,7 @@ def load_data():
     Returns:
         pd.DataFrame: DataFrame containing the concrete data
     """
-    # TODO: Use pandas to read the Excel file 'data/concrete_data.xlsx'
-    df = None
-    
+    df = pd.read_excel("data/concrete_data.xlsx")
     return df
 
 
@@ -31,21 +29,24 @@ def explore_data(df):
     """
     print("DATA EXPLORATION")
     
-    # TODO: Print the shape of the DataFrame
-    print(f"\nDataset shape: (rows, columns)")
+    # Print shape
+    print(f"\nDataset shape: {df.shape}")
     
-    # TODO: Print the column names
-    print(f"\nColumn names:")
+    # Print column names
+    print("\nColumn names:")
+    print(df.columns.tolist())
     
-    # TODO: Display summary statistics using df.describe()
+    # Summary statistics
     print("\nSummary Statistics:")
+    print(df.describe())
     
-    # TODO: Calculate correlation matrix and find feature most correlated with target
-    # Target column is 'Concrete Compressive Strength'
-    # Use df.corr() to get correlation matrix
-    # Extract correlations with target and find the maximum (excluding target itself)
+    # Correlation matrix
+    corr = df.corr()
+    target = 'Concrete Compressive Strength'
     
-    most_correlated_feature = None  # TODO: Find the feature name with highest correlation to target
+    # Correlation with target, excluding itself
+    corr_target = corr[target].drop(target)
+    most_correlated_feature = corr_target.abs().idxmax()
     
     print(f"\nMost correlated feature with strength: {most_correlated_feature}")
     
@@ -56,32 +57,25 @@ def preprocess_data(df, test_size=0.2, random_state=42):
     """
     Preprocess the data using pandas operations.
     
-    Args:
-        df: DataFrame containing the data
-        test_size: Proportion of data to use for testing
-        random_state: Random seed for reproducibility
-        
     Returns:
         tuple: (X_train_scaled, X_test_scaled, y_train, y_test, scaler, feature_names)
     """
-    # TODO: Use pandas to separate features (X) and target (y)
-    # Target column is 'Concrete Compressive Strength'
-    # Hint: Use df.drop() or df.iloc[] or column selection
-    X = None  # All columns except target
-    y = None  # Target column only
+    target = 'Concrete Compressive Strength'
     
-    # Store feature names
+    X = df.drop(columns=[target])
+    y = df[target]
+    
     feature_names = X.columns.tolist()
     
-    # TODO: Split into training and testing sets
-    X_train, X_test, y_train, y_test = None, None, None, None
+    # Split the data
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=test_size, random_state=random_state
+    )
     
-    # TODO: Create a StandardScaler and fit it on training data
-    scaler = None
-    
-    # TODO: Transform both training and testing data
-    X_train_scaled = None
-    X_test_scaled = None
+    # Scaling
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled = scaler.transform(X_test)
     
     return X_train_scaled, X_test_scaled, y_train, y_test, scaler, feature_names
 
@@ -89,70 +83,42 @@ def preprocess_data(df, test_size=0.2, random_state=42):
 def train_model(X_train, y_train, n_estimators=100, random_state=42):
     """
     Train a Random Forest Regressor.
-    
-    Args:
-        X_train: Training features
-        y_train: Training target
-        n_estimators: Number of trees in the forest
-        random_state: Random seed
-        
-    Returns:
-        RandomForestRegressor: Trained model
     """
-    # TODO: Create a RandomForestRegressor with the given parameters
-    model = None
-    
-    # TODO: Fit the model on training data
-    
+    model = RandomForestRegressor(
+        n_estimators=n_estimators,
+        random_state=random_state
+    )
+    model.fit(X_train, y_train)
     return model
 
 
 def evaluate_model(model, X_test, y_test):
     """
     Evaluate the model and return metrics.
-    
-    Args:
-        model: Trained model
-        X_test: Testing features
-        y_test: Testing target
-        
-    Returns:
-        dict: Dictionary with 'mse' and 'r2' keys
     """
-    # TODO: Make predictions on test data
-    y_pred = None
+    y_pred = model.predict(X_test)
     
-    # TODO: Calculate Mean Squared Error
-    mse = None
-    
-    # TODO: Calculate R-squared score
-    r2 = None
+    mse = mean_squared_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
     
     return {'mse': mse, 'r2': r2}
 
 
 def get_feature_importance(model, feature_names, top_n=3):
     """
-    Get the top N most important features as a pandas DataFrame.
-    
-    Args:
-        model: Trained Random Forest model
-        feature_names: List of feature names
-        top_n: Number of top features to return
-        
-    Returns:
-        pd.DataFrame: DataFrame with columns ['Feature', 'Importance'] sorted by importance
+    Return top N features sorted by importance as a pandas DataFrame.
     """
-    # TODO: Get feature importances from the model
-    importances = None
+    importances = model.feature_importances_
     
-    # TODO: Create a pandas DataFrame with feature names and importances
-    # Columns should be: 'Feature' and 'Importance'
-    importance_df = None
+    importance_df = pd.DataFrame({
+        'Feature': feature_names,
+        'Importance': importances
+    })
     
-    # TODO: Sort by importance (descending) and return top_n rows
-    # Use pandas sort_values() and head()
-    top_features_df = None
+    # Sort descending and select top_n
+    top_features_df = importance_df.sort_values(
+        by='Importance', ascending=False
+    ).head(top_n)
     
     return top_features_df
 
@@ -187,10 +153,11 @@ def main():
     print(f"   Mean Squared Error: {metrics['mse']:.2f}")
     print(f"   R-squared Score: {metrics['r2']:.4f}")
     
-    # Feature importance as DataFrame
+    # Feature importance
     print("\n6. Top 3 Most Important Features (pandas DataFrame):")
     top_features_df = get_feature_importance(model, feature_names)
     print(top_features_df.to_string(index=False))
     
+
 if __name__ == "__main__":
     main()
